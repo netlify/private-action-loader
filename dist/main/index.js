@@ -34,7 +34,7 @@ module.exports =
 /******/ 	// the startup function
 /******/ 	function startup() {
 /******/ 		// Load entry module and return exports
-/******/ 		return __webpack_require__(325);
+/******/ 		return __webpack_require__(131);
 /******/ 	};
 /******/
 /******/ 	// run startup
@@ -4045,6 +4045,54 @@ module.exports = require("child_process");
 
 /***/ }),
 
+/***/ 131:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+var core = __importStar(__webpack_require__(470));
+var action_1 = __webpack_require__(960);
+var token = core.getInput('pal-repo-token', { required: true });
+var repoName = core.getInput('pal-repo-name', { required: true });
+var actionDirectory = core.getInput('pal-action-directory', { required: false });
+var workDirectory = './.private-action';
+action_1.runAction({
+    token: token,
+    repoName: repoName,
+    actionDirectory: actionDirectory,
+    workDirectory: workDirectory,
+    post: false,
+})
+    .then(function () {
+    core.info('Action main completed successfully');
+})
+    .catch(function (e) {
+    core.setFailed(e.toString());
+});
+
+
+/***/ }),
+
 /***/ 192:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
@@ -7737,53 +7785,6 @@ if (typeof Object.create === 'function') {
     }
   }
 }
-
-
-/***/ }),
-
-/***/ 325:
-/***/ (function(__unusedmodule, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-var core = __importStar(__webpack_require__(470));
-var action_1 = __webpack_require__(960);
-var token = core.getInput('pal-repo-token', { required: true });
-var repoName = core.getInput('pal-repo-name', { required: true });
-var actionDirectory = core.getInput('pal-action-directory', { required: false });
-var workDirectory = './.private-action';
-action_1.runAction({
-    token: token,
-    repoName: repoName,
-    actionDirectory: actionDirectory,
-    workDirectory: workDirectory,
-})
-    .then(function () {
-    core.info('Action completed successfully');
-})
-    .catch(function (e) {
-    core.setFailed(e.toString());
-});
 
 
 /***/ }),
@@ -11957,38 +11958,44 @@ function setInputs(action) {
 exports.setInputs = setInputs;
 function runAction(opts) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, repo, sha, repoUrl, cmd, actionPath, actionFile, action;
+        var _a, repo, sha, repoUrl, repoPathSafeName, repoDirectory, cmd, actionPath, actionFile, action, postIf;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
                     _a = opts.repoName.split('@'), repo = _a[0], sha = _a[1];
+                    repoUrl = "https://" + opts.token + "@github.com/" + repo + ".git";
+                    repoPathSafeName = repo.replace(/[^a-zA-Z0-9]/, '_');
+                    repoDirectory = path_1.join(opts.workDirectory, repoPathSafeName);
                     core.info('Masking token just in case');
                     core.setSecret(opts.token);
                     core.startGroup('Cloning private action');
-                    repoUrl = "https://" + opts.token + "@github.com/" + repo + ".git";
-                    cmd = ['git clone', repoUrl, opts.workDirectory].join(' ');
-                    core.info("Cleaning workDirectory");
-                    rimraf_1.sync(opts.workDirectory);
+                    if (!fs_1.existsSync(repoDirectory)) return [3 /*break*/, 1];
+                    core.info("Repo is already cloned.");
+                    return [3 /*break*/, 4];
+                case 1:
+                    cmd = ['git clone', repoUrl, repoDirectory].join(' ');
                     core.info("Cloning action from https://***TOKEN***@github.com/" + repo + ".git" + (sha ? " (SHA: " + sha + ")" : ''));
                     return [4 /*yield*/, exec.exec(cmd)];
-                case 1:
+                case 2:
                     _b.sent();
                     core.info('Remove github token from config');
                     return [4 /*yield*/, exec.exec("git remote set-url origin https://github.com/" + repo + ".git", undefined, {
-                            cwd: opts.workDirectory,
+                            cwd: repoDirectory,
                         })];
-                case 2:
-                    _b.sent();
-                    if (!sha) return [3 /*break*/, 4];
-                    core.info("Checking out " + sha);
-                    return [4 /*yield*/, exec.exec("git checkout " + sha, undefined, { cwd: opts.workDirectory })];
                 case 3:
                     _b.sent();
                     _b.label = 4;
                 case 4:
+                    if (!sha) return [3 /*break*/, 6];
+                    core.info("Checking out " + sha);
+                    return [4 /*yield*/, exec.exec("git checkout " + sha, undefined, { cwd: repoDirectory })];
+                case 5:
+                    _b.sent();
+                    _b.label = 6;
+                case 6:
                     actionPath = opts.actionDirectory
-                        ? path_1.join(opts.workDirectory, opts.actionDirectory)
-                        : opts.workDirectory;
+                        ? path_1.join(repoDirectory, opts.actionDirectory)
+                        : repoDirectory;
                     core.info("Reading " + actionPath);
                     actionFile = fs_1.readFileSync(actionPath + "/action.yml", 'utf8');
                     action = yaml_1.parse(actionFile);
@@ -11999,13 +12006,31 @@ function runAction(opts) {
                     core.startGroup('Input Validation');
                     setInputs(action);
                     core.endGroup();
-                    core.info("Starting private action " + action.name);
-                    return [4 /*yield*/, exec.exec("node " + path_1.join(actionPath, action.runs.main))];
-                case 5:
+                    if (!opts.post) return [3 /*break*/, 10];
+                    if (!!action.runs.post) return [3 /*break*/, 7];
+                    core.info("Action has no 'post' step");
+                    return [3 /*break*/, 9];
+                case 7:
+                    postIf = action.runs['post-if'];
+                    if (postIf && postIf !== 'always()') {
+                        throw new Error("Action has post-if that isn't empty or 'always()': that's not supported yet");
+                    }
+                    core.info("Running post for action " + action.nam);
+                    return [4 /*yield*/, exec.exec("node " + path_1.join(actionPath, action.runs.post))];
+                case 8:
                     _b.sent();
-                    core.info("Cleaning up action");
-                    rimraf_1.sync(opts.workDirectory);
-                    return [2 /*return*/];
+                    _b.label = 9;
+                case 9:
+                    core.info("Cleaning up repo directory");
+                    rimraf_1.sync(repoDirectory);
+                    return [3 /*break*/, 12];
+                case 10:
+                    core.info("Running main for action " + action.name);
+                    return [4 /*yield*/, exec.exec("node " + path_1.join(actionPath, action.runs.main))];
+                case 11:
+                    _b.sent();
+                    _b.label = 12;
+                case 12: return [2 /*return*/];
             }
         });
     });

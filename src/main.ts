@@ -11,9 +11,10 @@ runAction({
   repoName,
   actionDirectory,
   workDirectory,
+  post: false,
 })
   .then(() => {
-    core.info('Action completed successfully');
+    core.info('Action main completed successfully');
   })
   .catch(e => {
     core.setFailed(e.toString());

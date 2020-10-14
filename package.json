@@ -6,7 +6,7 @@
   "scripts": {
     "clean": "npx rimraf node_modules dist",
     "test": "jest --coverage",
-    "prepare": "ncc build src/index.ts",
+    "prepare": "ncc build -o dist/main src/main.ts && ncc build -o dist/post src/post.ts",
     "lint": "npm run lint:ts && npm run lint:yaml",
     "lint:ts": "eslint --config configs/.eslintrc.js **/*.ts --fix",
     "lint:yaml": "yamllint *.yml *.yaml --fix",

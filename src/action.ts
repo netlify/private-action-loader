@@ -1,9 +1,9 @@
 import * as exec from '@actions/exec';
 import * as core from '@actions/core';
 import { parse } from 'yaml';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { sync } from 'rimraf';
+import { sync as rimrafSync } from 'rimraf';
 
 export function setInputs(action: any): void {
   if (!action.inputs) {
@@ -36,39 +36,43 @@ export async function runAction(opts: {
   repoName: string;
   workDirectory: string;
   actionDirectory?: string;
+  post: boolean;
 }): Promise<void> {
   const [repo, sha] = opts.repoName.split('@');
+  const repoUrl = `https://${opts.token}@github.com/${repo}.git`;
+  const repoPathSafeName = repo.replace(/[^a-zA-Z0-9]/, '_');
+  const repoDirectory = join(opts.workDirectory, repoPathSafeName);
 
   core.info('Masking token just in case');
   core.setSecret(opts.token);
 
   core.startGroup('Cloning private action');
-  const repoUrl = `https://${opts.token}@github.com/${repo}.git`;
-  const cmd = ['git clone', repoUrl, opts.workDirectory].join(' ');
+  if (existsSync(repoDirectory)) {
+    core.info(`Repo is already cloned.`);
+  } else {
+    const cmd = ['git clone', repoUrl, repoDirectory].join(' ');
 
-  core.info(`Cleaning workDirectory`);
-  sync(opts.workDirectory);
+    core.info(
+      `Cloning action from https://***TOKEN***@github.com/${repo}.git${sha ? ` (SHA: ${sha})` : ''}`
+    );
+    await exec.exec(cmd);
 
-  core.info(
-    `Cloning action from https://***TOKEN***@github.com/${repo}.git${sha ? ` (SHA: ${sha})` : ''}`
-  );
-  await exec.exec(cmd);
-
-  core.info('Remove github token from config');
-  await exec.exec(`git remote set-url origin https://github.com/${repo}.git`, undefined, {
-    cwd: opts.workDirectory,
-  });
+    core.info('Remove github token from config');
+    await exec.exec(`git remote set-url origin https://github.com/${repo}.git`, undefined, {
+      cwd: repoDirectory,
+    });
+  }
 
   if (sha) {
     core.info(`Checking out ${sha}`);
-    await exec.exec(`git checkout ${sha}`, undefined, { cwd: opts.workDirectory });
+    await exec.exec(`git checkout ${sha}`, undefined, { cwd: repoDirectory });
   }
 
-  // if actionDirectory specified, join with workDirectory (for use when multiple actions exist in same repo)
-  // if actionDirectory not specified, use workDirectory (for repo with a single action at root)
+  // if actionDirectory specified, join with repoDirectory (for use when multiple actions exist in same repo)
+  // if actionDirectory not specified, use repoDirectory (for repo with a single action at root)
   const actionPath = opts.actionDirectory
-    ? join(opts.workDirectory, opts.actionDirectory)
-    : opts.workDirectory;
+    ? join(repoDirectory, opts.actionDirectory)
+    : repoDirectory;
 
   core.info(`Reading ${actionPath}`);
   const actionFile = readFileSync(`${actionPath}/action.yml`, 'utf8');
@@ -77,16 +81,31 @@ export async function runAction(opts: {
   if (!(action && action.name && action.runs && action.runs.main)) {
     throw new Error('Malformed action.yml found');
   }
-
   core.endGroup();
 
   core.startGroup('Input Validation');
   setInputs(action);
   core.endGroup();
 
-  core.info(`Starting private action ${action.name}`);
-  await exec.exec(`node ${join(actionPath, action.runs.main)}`);
+  if (opts.post) {
+    if (!action.runs.post) {
+      core.info(`Action has no 'post' step`);
+    } else {
+      let postIf = action.runs['post-if'];
+      if (postIf && postIf !== 'always()') {
+        throw new Error(
+          `Action has post-if that isn't empty or 'always()': that's not supported yet`
+        );
+      }
 
-  core.info(`Cleaning up action`);
-  sync(opts.workDirectory);
+      core.info(`Running post for action ${action.nam}`);
+      await exec.exec(`node ${join(actionPath, action.runs.post)}`);
+    }
+
+    core.info(`Cleaning up repo directory`);
+    rimrafSync(repoDirectory);
+  } else {
+    core.info(`Running main for action ${action.name}`);
+    await exec.exec(`node ${join(actionPath, action.runs.main)}`);
+  }
 }
