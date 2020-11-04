@@ -11868,6 +11868,17 @@ var isArray = Array.isArray || function (xs) {
 
 "use strict";
 
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
@@ -12026,7 +12037,9 @@ function runAction(opts) {
                     return [3 /*break*/, 12];
                 case 10:
                     core.info("Running main for action " + action.name);
-                    return [4 /*yield*/, exec.exec("node " + path_1.join(actionPath, action.runs.main))];
+                    return [4 /*yield*/, exec.exec("node " + path_1.join(actionPath, action.runs.main), [], {
+                            env: __assign(__assign({}, process.env), { PRIVATE_ACTION_DIR: repoDirectory }),
+                        })];
                 case 11:
                     _b.sent();
                     _b.label = 12;

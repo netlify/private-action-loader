@@ -91,7 +91,7 @@ export async function runAction(opts: {
     if (!action.runs.post) {
       core.info(`Action has no 'post' step`);
     } else {
-      let postIf = action.runs['post-if'];
+      const postIf = action.runs['post-if'];
       if (postIf && postIf !== 'always()') {
         throw new Error(
           `Action has post-if that isn't empty or 'always()': that's not supported yet`
@@ -106,6 +106,11 @@ export async function runAction(opts: {
     rimrafSync(repoDirectory);
   } else {
     core.info(`Running main for action ${action.name}`);
-    await exec.exec(`node ${join(actionPath, action.runs.main)}`);
+    await exec.exec(`node ${join(actionPath, action.runs.main)}`, [], {
+      env: {
+        ...process.env,
+        PRIVATE_ACTION_DIR: repoDirectory,
+      },
+    });
   }
 }
